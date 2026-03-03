@@ -1,0 +1,434 @@
+# Workplace Safety Web App — Implementation Plan
+
+A pre-sale demo web application for the **Workplace Safety / PPE Detection** use case, following the same architecture as the existing Lead Scoring project. The app demonstrates how Dataiku-powered AI models can detect PPE compliance (helmets, vests, masks) from images/video, display real-time alerts, and provide comprehensive safety analytics.
+
+**Target directory**: `c:\work\pre_sale\DS_service\object_detect\factory_safety`
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph LR
+  A[Next.js Frontend<br/>Port 3000] -->|REST API| B[FastAPI Backend<br/>Port 8080]
+  B -->|dataikuapi / REST| C[Dataiku DSS<br/>Model Inference]
+  B -->|Read/Write| D[(SQLite / JSON<br/>Local Storage)]
+```
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | Next.js App Router, TypeScript, Tailwind CSS v4, ShadCN UI, Recharts, Framer Motion | UI & visualization |
+| Backend | FastAPI, Python, Pydantic | API gateway, file handling, report generation |
+| AI/ML | Dataiku DSS API | Object detection model inference |
+| Storage | SQLite (or JSON files for demo) | Incident logs, detection history |
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Dataiku API Endpoint**: The plan assumes the Dataiku object detection model is accessible via `dataikuapi` or a REST scoring endpoint. Please confirm:
+> 1. The Dataiku project key (e.g., `OBJECT_DETECTION`)
+> 2. The scoring endpoint ID or API service name
+> 3. Whether the model accepts base64-encoded images or multipart file uploads
+
+> [!NOTE]
+> **Demo Mode**: All pages will ship with realistic mock data so the app works standalone without a Dataiku connection. The backend will gracefully fall back to mock responses when Dataiku is unreachable.
+
+---
+
+## Proposed Changes
+
+### Frontend — Project Setup
+
+#### [NEW] [package.json](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/package.json)
+Next.js project initialized via `npx create-next-app`. Key dependencies matching the Lead Scoring project:
+- `next`, `react`, `react-dom` (same versions)
+- `tailwindcss` v4, `@tailwindcss/postcss`, `tw-animate-css`
+- `shadcn`, ShadCN UI components (Card, Tabs, Dialog, Switch, Slider, Sheet, Badge, etc.)
+- `recharts`, `framer-motion`, `lucide-react`
+- `react-dropzone` (for file upload)
+- `date-fns`, `xlsx` (for reports)
+
+#### [NEW] [globals.css](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/globals.css)
+Direct copy of the SSCI design system from the Lead Scoring project (brand colors, enterprise card styles, glassmorphism, shadows, shimmer loading).
+
+#### [NEW] [layout.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/layout.tsx)
+Root layout with Manrope + JetBrains Mono fonts, `AppProviders` wrapper.
+
+---
+
+### Frontend — Layout Shell
+
+#### [NEW] [sidebar.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/layout/sidebar.tsx)
+Collapsible SSCI-branded sidebar (`#1B7FB5`) with navigation items:
+| Icon | Label | Route |
+|------|-------|-------|
+| `Home` | Dashboard | `/` |
+| `ScanSearch` | Detection Center | `/detection` |
+| `FileText` | Incident Log | `/incidents` |
+| `SlidersHorizontal` | AI Configuration | `/config` |
+| `Download` | Export & Reports | `/reports` |
+| `Settings` | Settings | `/settings` |
+
+Logo area: **SSCI** / **Workplace Safety** with a `ShieldCheck` icon in brand yellow.
+
+#### [NEW] [main-layout.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/layout/main-layout.tsx)
+Same pattern as Lead Scoring — fixed sidebar + `TopBar` + main content area.
+
+#### [NEW] [top-bar.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/layout/top-bar.tsx)
+Page title display with breadcrumb and optional action slot.
+
+---
+
+### Frontend — Shared Components
+
+#### [NEW] [kpi-card.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/kpi-card.tsx)
+Reuse from Lead Scoring — animated KPI card with spring animation.
+
+#### [NEW] [chart-card.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/chart-card.tsx)
+Wrapper card for Recharts charts with title, subtitle, and enterprise styling.
+
+#### [NEW] [alert-card.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/alert-card.tsx)
+Real-time violation alert card with thumbnail, timestamp, violation type, and severity badge.
+
+#### [NEW] [bounding-box-canvas.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/detection/bounding-box-canvas.tsx)
+Canvas overlay component that draws bounding boxes on images/video:
+- Green boxes (`#10b981`) = compliant / safe
+- Red boxes (`#ef4444`) = violation detected
+- Labels with confidence percentage
+
+---
+
+### Frontend — Page 1: Dashboard (`/`)
+
+#### [NEW] [page.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/page.tsx)
+**Safety Overview Dashboard** for executive-level viewers.
+
+**KPI Row** (5 cards):
+| Metric | Example | Icon |
+|--------|---------|------|
+| Compliance Rate | 94.7% | `ShieldCheck` |
+| Total Detections | 1,247 | `ScanSearch` |
+| Violations Today | 12 | `AlertTriangle` |
+| Avg Response Time | 3.2 min | `Clock` |
+| Active Zones | 8 | `Camera` |
+
+**Charts Section** (grid `col-span-7` + `col-span-5`):
+- **Line Chart**: 7-day compliance trend (Recharts `AreaChart`)
+- **Bar Chart**: Violations by department/zone
+- **Donut Chart**: Violation type breakdown (Helmet, Vest, Mask)
+- **Heatmap/Table**: Recent alerts summary
+
+#### [NEW] [mock-data-dashboard.ts](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/mock-data-dashboard.ts)
+Realistic 7-day mock data for all dashboard charts.
+
+#### [NEW] [use-dashboard.ts](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/use-dashboard.ts)
+Custom hook that fetches from API or falls back to mock data.
+
+---
+
+### Frontend — Page 2: Detection Center (`/detection`)
+
+#### [NEW] [page.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/detection/page.tsx)
+The hero page with **two tabs**:
+
+**Tab A — Manual Upload (Playground)**:
+- Drag-and-drop zone (`react-dropzone`) for images/videos
+- "Analyze" button (brand yellow CTA)
+- Result panel: image with bounding box overlay + detection summary sidebar
+- Detection cards listing each detected object with confidence
+
+**Tab B — Live Simulation**:
+- Video player that loops a pre-loaded CCTV video
+- Real-time bounding boxes drawn over video frames
+- Sidebar: scrolling "Real-time Alerts" feed with animated `AlertCard` entries
+
+**Layout**: Main content area (70%) + Alert Sidebar (30%)
+
+#### [NEW] Components in `components/detection/`:
+- `upload-zone.tsx` — Dropzone with preview
+- `detection-result.tsx` — Image/video result with bounding boxes
+- `alert-sidebar.tsx` — Real-time violation alert feed
+- `detection-summary.tsx` — Summary stats of current analysis
+
+#### [NEW] [mock-data-detection.ts](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/mock-data-detection.ts)
+Mock bounding box coordinates and detection results.
+
+---
+
+### Frontend — Page 3: Incident Log & Gallery (`/incidents`)
+
+#### [NEW] [page.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/incidents/page.tsx)
+**Audit Trail** page:
+- **Filters**: Date range picker, violation type dropdown, zone/location filter
+- **Data Table**: Sortable columns — Timestamp, Location, Violation Type, Confidence, Status
+- **Row click → Dialog**: Expanded view with full annotated snapshot image, detailed metadata
+- **Gallery toggle**: Switch between table view and image gallery grid view
+
+#### [NEW] Components in `components/incidents/`:
+- `incident-table.tsx` — Sortable/filterable data table
+- `incident-gallery.tsx` — Grid of annotated thumbnails
+- `incident-detail-dialog.tsx` — Modal with full image and metadata
+
+#### [NEW] [mock-data-incidents.ts](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/mock-data-incidents.ts)
+30+ mock incident records with varied timestamps, zones, types.
+
+---
+
+### Frontend — Page 4: AI Configuration (`/config`)
+
+#### [NEW] [page.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/config/page.tsx)
+**AI Configuration Panel** showcasing MLOps flexibility:
+
+**Section 1 — Detection Toggles**:
+- Toggle switches (ShadCN `Switch`) for each detection class:
+  - `[x] Hard Hat / Helmet`
+  - `[x] Safety Vest`
+  - `[ ] Face Mask`
+  - `[ ] Safety Goggles`
+  - `[ ] Gloves`
+- Each toggle shows an icon and description
+
+**Section 2 — Confidence Threshold**:
+- `Slider` component (0–100%) with real-time value display
+- Visual guide: "Low → More detections, more false positives" ↔ "High → Fewer detections, higher precision"
+
+**Section 3 — Zone Configuration** (bonus):
+- Map/grid of monitored zones with enable/disable toggles
+- Zone names editable inline
+
+**Save button** → sends config as parameters to backend on next detection API call.
+
+---
+
+### Frontend — Page 5: Export & Reports (`/reports`)
+
+#### [NEW] [page.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/app/reports/page.tsx)
+**Enterprise Reporting** page:
+
+- **Date range picker** (ShadCN `Calendar` + `Popover`)
+- **Report type selector**: Weekly Summary / Monthly Summary / Custom Range
+- **Preview section**: Summary statistics for selected period
+- **Download buttons**: PDF (brand blue) and Excel (brand yellow)
+- **Recent reports list**: Table of previously generated reports with download links
+
+---
+
+### Frontend — Utility Layer
+
+#### [NEW] [api-client.ts](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/api-client.ts)
+API client matching the Lead Scoring pattern:
+```typescript
+// Namespaces: dashboardApi, detectionApi, incidentApi, configApi, reportApi
+```
+
+#### [NEW] [sidebar-context.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/lib/sidebar-context.tsx)
+Sidebar state management (collapsed/expanded).
+
+#### [NEW] [providers.tsx](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/safety-app/components/providers.tsx)
+App providers wrapper.
+
+---
+
+### Backend — Project Setup
+
+#### [NEW] [main.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/main.py)
+FastAPI application factory with CORS middleware. Routers:
+- `/api/v1/health`
+- `/api/v1/dashboard`
+- `/api/v1/detection`
+- `/api/v1/incidents`
+- `/api/v1/config`
+- `/api/v1/reports`
+
+#### [NEW] [config.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/config.py)
+Settings class:
+- `DATAIKU_HOST`, `API_KEY`, `PROJECT_KEY` (env vars)
+- `MODEL_ENDPOINT_ID` — Dataiku API service endpoint
+- `UPLOAD_DIR` — local upload storage path
+- `DB_PATH` — SQLite database path
+
+#### [NEW] [requirements.txt](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/requirements.txt)
+```
+fastapi
+uvicorn
+python-multipart
+pydantic
+dataikuapi
+Pillow
+openpyxl
+reportlab
+aiosqlite
+python-dotenv
+```
+
+---
+
+### Backend — Schemas
+
+#### [NEW] [common.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/schemas/common.py)
+Generic `APIResponse[T]` model (copied from Lead Scoring).
+
+#### [NEW] [detection.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/schemas/detection.py)
+```python
+class BoundingBox(BaseModel):
+    x: float      # top-left x (0-1 normalized)
+    y: float      # top-left y
+    width: float
+    height: float
+
+class Detection(BaseModel):
+    label: str            # "helmet", "vest", "no_helmet"
+    confidence: float     # 0.0 – 1.0
+    bbox: BoundingBox
+    is_violation: bool
+
+class DetectionResult(BaseModel):
+    detections: list[Detection]
+    image_url: str | None
+    processed_at: datetime
+    total_persons: int
+    violations_count: int
+    compliance_rate: float
+```
+
+#### [NEW] [incident.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/schemas/incident.py)
+Incident log entry schema.
+
+---
+
+### Backend — Services
+
+#### [NEW] [dataiku_service.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/services/dataiku_service.py)
+Singleton Dataiku client with:
+- `detect_objects(image_bytes, config)` → calls Dataiku scoring endpoint
+- `get_detection_history()` → reads from Dataiku dataset
+- Falls back to mock results if Dataiku is unreachable
+
+#### [NEW] [report_service.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/services/report_service.py)
+PDF/Excel report generation using `reportlab` and `openpyxl`.
+
+---
+
+### Backend — Routers
+
+#### [NEW] [dashboard.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/routers/dashboard.py)
+- `GET /summary` — KPIs (compliance rate, violation count, etc.)
+- `GET /trends` — 7-day trend data for charts
+- `GET /violations-by-zone` — breakdown by department
+
+#### [NEW] [detection.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/routers/detection.py)
+- `POST /analyze` — Upload image + config → call Dataiku → return detections
+- `POST /analyze-video` — Upload video → process frames → return detections
+- `GET /live/feed` — SSE stream for live simulation mode
+
+#### [NEW] [incidents.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/routers/incidents.py)
+- `GET /list` — Paginated incident log with filters
+- `GET /{id}` — Single incident detail with image
+- `POST /` — Create new incident (auto-created on detection)
+
+#### [NEW] [config.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/routers/config.py)
+- `GET /current` — Get current AI configuration
+- `PUT /update` — Update detection toggles, confidence threshold
+
+#### [NEW] [reports.py](file:///c:/work/pre_sale/DS_service/object_detect/factory_safety/backend/routers/reports.py)
+- `POST /generate` — Generate report for date range
+- `GET /download/{id}` — Download generated report file
+
+---
+
+## File Structure Summary
+
+```
+factory_safety/
+├── safety-app/                    # Next.js Frontend
+│   ├── app/
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── page.tsx               # Dashboard
+│   │   ├── detection/page.tsx     # Detection Center
+│   │   ├── incidents/page.tsx     # Incident Log
+│   │   ├── config/page.tsx        # AI Configuration
+│   │   └── reports/page.tsx       # Export & Reports
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── sidebar.tsx
+│   │   │   ├── main-layout.tsx
+│   │   │   └── top-bar.tsx
+│   │   ├── detection/
+│   │   │   ├── upload-zone.tsx
+│   │   │   ├── bounding-box-canvas.tsx
+│   │   │   ├── detection-result.tsx
+│   │   │   ├── alert-sidebar.tsx
+│   │   │   └── detection-summary.tsx
+│   │   ├── incidents/
+│   │   │   ├── incident-table.tsx
+│   │   │   ├── incident-gallery.tsx
+│   │   │   └── incident-detail-dialog.tsx
+│   │   ├── kpi-card.tsx
+│   │   ├── chart-card.tsx
+│   │   ├── alert-card.tsx
+│   │   └── providers.tsx
+│   └── lib/
+│       ├── api-client.ts
+│       ├── sidebar-context.tsx
+│       ├── utils.ts
+│       ├── mock-data-dashboard.ts
+│       ├── mock-data-detection.ts
+│       ├── mock-data-incidents.ts
+│       ├── use-dashboard.ts
+│       └── use-incidents.ts
+├── backend/                       # FastAPI Backend
+│   ├── __init__.py
+│   ├── main.py
+│   ├── config.py
+│   ├── schemas/
+│   │   ├── common.py
+│   │   ├── detection.py
+│   │   └── incident.py
+│   ├── services/
+│   │   ├── dataiku_service.py
+│   │   └── report_service.py
+│   └── routers/
+│       ├── health.py
+│       ├── dashboard.py
+│       ├── detection.py
+│       ├── incidents.py
+│       ├── config.py
+│       └── reports.py
+└── requirements.txt
+```
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. **Frontend build check**:
+   ```bash
+   cd c:\work\pre_sale\DS_service\object_detect\factory_safety\safety-app
+   npm run build
+   ```
+   Should complete with zero errors.
+
+2. **Backend startup check**:
+   ```bash
+   cd c:\work\pre_sale\DS_service\object_detect\factory_safety
+   python -m uvicorn backend.main:app --host 0.0.0.0 --port 8080
+   ```
+   Should start without import errors. Health endpoint `GET /api/v1/health` should return `{"success": true}`.
+
+### Visual Verification (Browser)
+1. Start the frontend dev server (`npm run dev` on port 3000)
+2. Visit each page and verify:
+   - **Dashboard** (`/`): 5 KPI cards render, charts display with mock data, branded styling correct
+   - **Detection** (`/detection`): Both tabs switch, upload zone accepts files, bounding box overlay renders on sample image
+   - **Incidents** (`/incidents`): Table renders with mock data, filtering works, row-click dialog opens with image
+   - **Config** (`/config`): Toggle switches and slider are interactive, values persist visually
+   - **Reports** (`/reports`): Date picker opens, download buttons are styled correctly
+3. Verify sidebar navigation works (collapse/expand, active states, mobile sheet)
+4. Verify SSCI branding: correct blue sidebar, yellow CTAs, Manrope font, enterprise card styling
+
+### Manual Verification
+- After verifying in the browser, the user should visually confirm that the design matches the SSCI brand guidelines and meets the demo quality bar.
