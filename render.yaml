@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: factory-safety-api
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DETECTION_PROVIDER
+        value: roboflow
+      - key: ROBOFLOW_API_KEY
+        sync: false
+      - key: ROBOFLOW_MODEL_ID
+        value: construction-safety-gsnvb/1
+      - key: PYTHON_VERSION
+        value: "3.12"
