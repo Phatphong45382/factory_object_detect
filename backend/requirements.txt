@@ -7,9 +7,6 @@ python-dotenv
 Pillow
 numpy
 
-# Roboflow Inference (for hosted inference)
+# Roboflow Inference SDK (lightweight HTTP client)
 # Docs: https://inference.roboflow.com
-# Note: Requires ROBOFLOW_API_KEY environment variable
-inference
 inference-sdk
-supervision
