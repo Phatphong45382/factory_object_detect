@@ -30,7 +30,7 @@ export function Tabs({ defaultValue, value, onValueChange, children, className }
 
 export function TabsList({ children, className }: any) {
     return (
-        <div className={cn("inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground", className)}>
+        <div className={cn("inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground", className)} suppressHydrationWarning>
             {children}
         </div>
     )
@@ -50,6 +50,7 @@ export function TabsTrigger({ value, children, className, disabled }: any) {
                 isActive && "bg-background text-foreground shadow-sm",
                 className
             )}
+            suppressHydrationWarning
         >
             {children}
         </button>

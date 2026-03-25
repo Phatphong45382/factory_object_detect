@@ -41,32 +41,36 @@ export function TopBar({ title, description }: TopBarProps) {
                 {/* ── Right: Search + Icons + User ── */}
                 <div className="flex items-center gap-2 relative">
                     {/* Search Bar */}
-                    <div className="relative hidden lg:flex items-center">
+                    <div className="relative hidden lg:flex items-center" suppressHydrationWarning>
                         <Search className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
                             placeholder="Search..."
                             className="pl-9 pr-4 w-[200px] h-9 rounded-lg bg-slate-50 border border-slate-200 text-sm placeholder:text-slate-400 focus-visible:outline-none focus:ring-2 focus:ring-[#3DB9EB]/30 focus:border-[#3DB9EB] transition-all"
+                            suppressHydrationWarning
                         />
                     </div>
 
                     {/* Icon Buttons */}
-                    <div className="hidden md:flex items-center gap-0.5 ml-1">
+                    <div className="hidden md:flex items-center gap-0.5 ml-1" suppressHydrationWarning>
                         <button
                             className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             title="Settings"
+                            suppressHydrationWarning
                         >
                             <Settings className="w-[18px] h-[18px]" />
                         </button>
                         <button
                             className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             title="Dark Mode"
+                            suppressHydrationWarning
                         >
                             <Moon className="w-[18px] h-[18px]" />
                         </button>
                         <button
                             className="relative p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                             title="Notifications"
+                            suppressHydrationWarning
                         >
                             <Bell className="w-[18px] h-[18px]" />
                             {/* Notification dot */}
@@ -82,6 +86,7 @@ export function TopBar({ title, description }: TopBarProps) {
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
                             className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors outline-none"
+                            suppressHydrationWarning
                         >
                             <div className="w-8 h-8 rounded-full bg-[#3DB9EB] text-white flex flex-col items-center justify-center text-xs font-bold shrink-0">
                                 AU

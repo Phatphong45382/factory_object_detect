@@ -383,7 +383,7 @@ export default function DetectionCenter() {
                                                 <h4 className="text-sm font-bold text-slate-700">Detected Items</h4>
                                             </div>
                                             <CardContent className="p-0 divide-y divide-slate-100 max-h-[350px] overflow-y-auto">
-                                                {analysisResult.detections.length === 0 ? (
+                                                {analysisResult.detections?.length === 0 ? (
                                                     <div className="p-6 text-center text-sm text-slate-400">No objects detected</div>
                                                 ) : (
                                                     analysisResult.detections.map((d: any, i: number) => (

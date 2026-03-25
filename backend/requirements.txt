@@ -3,5 +3,13 @@ uvicorn
 python-multipart
 pydantic
 pydantic-settings
-dataikuapi
 python-dotenv
+Pillow
+numpy
+
+# Roboflow Inference (for hosted inference)
+# Docs: https://inference.roboflow.com
+# Note: Requires ROBOFLOW_API_KEY environment variable
+inference
+inference-sdk
+supervision
